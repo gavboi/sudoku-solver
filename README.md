@@ -1,5 +1,5 @@
-# SUdoku Solver in C
-Solves standard Sudoku puzzles. 
+# Sudoku Solver in C
+(WIP) Solves standard Sudoku puzzles. 
 
 ### Ramblings
 
