@@ -11,5 +11,11 @@ int main() {
 	
 	printf("Is pow 2: %s\n", result == (int)result ? "yes" : "no");
 	
+	printf("------------------\n");
+	printf("%f flr:%d rem:%d\n", 1.0/2.0, 1/2, 1%2);
+	
+	printf("------------------\n");
+	printf("%s\n", 0 ? "yes" : "no");
+	
 	return 0;
 }
