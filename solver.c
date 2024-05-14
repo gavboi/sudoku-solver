@@ -1,0 +1,90 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h> 
+
+#define SIZE 3
+
+int d();
+int is_complete(int** cells);
+int* get_row(int** cells, int index);
+int* get_column(int** cells, int index);
+int* get_box(int** cells, int index);
+int print_puzzle(int** cells);
+
+int main() {
+	printf("=== SUDOKU SOLVER ===\n");
+	// setup variables and functions
+	int **cells = (int **)malloc(SIZE * sizeof(int *));
+	for (int i = 0; i < SIZE; i++) {
+		cells[i] = (int *)malloc(SIZE * sizeof(int));
+	}
+	char input;
+	int index;
+	
+	// get input
+	printf("Enter sudoku puzzle line by line (%d lines)\n", SIZE);
+	printf("and use 0 for unknown cells:\n\n");
+	for (int row_num = 0; row_num < SIZE; row_num++) {
+		index = 0;
+		while ((input = getchar()) && index < SIZE) {
+			if (input != '\n' && input != ' ') {
+				cells[index++][row_num] = input - '0';
+			}
+		}
+	}
+	
+	// confirm input
+	printf("\nPuzzle received:\n");
+	print_puzzle((int **)cells);
+	
+	// solve
+	// TODO
+	
+	// free
+	printf("Freeing memory...");
+	for (int i = 0; i < SIZE; i++) {
+		free(cells[i]);
+	}
+	free(cells);
+	return 0;
+}
+
+int d() {
+	printf(".");
+}
+
+int is_complete(int** cells) {
+	// TODO: bitwise 511 from array
+	return 0;
+}
+
+int* get_row(int** cells, int index) {
+	int *row = (int *)malloc(SIZE * sizeof(int));
+	for (int x = 0; x < SIZE; x++) {
+		row[x] = (int)*(*(cells + x) + index);
+	}
+	return row;
+}
+
+int* get_column(int** cells, int index) {
+	int *col = *(cells + index);
+	return (int *)col;
+}
+
+int* get_box(int** cells, int index) {
+	//TODO
+}
+
+int print_puzzle(int** cells) {
+	for (int y = 0; y < SIZE; y++) {
+		for (int x = 0; x < SIZE; x++) {
+			printf("%d", cells[x][y]);
+		}
+		printf("\n");
+	}
+	return 0;
+}
+
+// TODO
+// - convert to 1d array
+// - solving algorithms
