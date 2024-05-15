@@ -17,5 +17,8 @@ int main() {
 	printf("------------------\n");
 	printf("%s\n", 0 ? "yes" : "no");
 	
+	printf("------------------\n");
+	printf("%d\n", 1 << 2);
+	
 	return 0;
 }
