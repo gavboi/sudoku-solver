@@ -39,7 +39,7 @@ int main() {
 	// values stored 1d, left to right then top to bottom
 	int *cells = (int *)malloc(SIZE * SIZE * sizeof(int));
 	int *blocked_numbers = (int *)malloc(SIZE * SIZE * sizeof(int));
-	int *section = (int *)malloc(SIZE * sizeof(int));
+	int *section;;
 	char input;
 	int index;
 	int value;
@@ -73,10 +73,13 @@ int main() {
 			value = bit_shift(*(cells + i));
 			section = (int *)cells_in_row(cell_to_row(i));
 			mark_cells_blocked_by_value(blocked_numbers, section, value);
+			free(section);
 			section = (int *)cells_in_column(cell_to_column(i));
 			mark_cells_blocked_by_value(blocked_numbers, section, value);
+			free(section);
 			section = (int *)cells_in_box(cell_to_box(i));
 			mark_cells_blocked_by_value(blocked_numbers, section, value);
+			free(section);
 		} else {
 			printf("cell %d is empty\n", i);
 		}
@@ -91,7 +94,6 @@ int main() {
 	printf("Freeing memory\n");
 	free(cells);
 	free(blocked_numbers);
-	free(section);
 	
 	printf("Done\n\n");
 	return 0;
@@ -236,41 +238,40 @@ int is_section_complete(int* arr) {
 int is_puzzle_complete(int* cells) {
 	/* Checks if all rows, columns and boxes are complete sections.
 	 * Returns 1 if yes, 0 if no, -1 if invalid. */
-	int *section = (int *)malloc(SIZE * sizeof(int));
+	int *section;
 	int section_complete;
 	for (int i = 0; i < SIZE; i++) {
 		section = get_row_values(cells, i);
 		section_complete = is_section_complete(section);
+		free(section);
 		if (section_complete == -1) {return -1;}
 		if (section_complete == 0) {
 			if (VERBOSE) {
 				printf("Row index %d incomplete\n", i);
 			}
-			free(section);
 			return 0;
 		}
 		section = get_column_values(cells, i);
 		section_complete = is_section_complete(section);
+		free(section);
 		if (section_complete == -1) {return -1;}
 		if (section_complete == 0) {
 			if (VERBOSE) {
 				printf("Column index %d incomplete\n", i);
 			}
-			free(section);
 			return 0;
 		}
 		section = get_box_values(cells, i);
 		section_complete = is_section_complete(section);
+		free(section);
 		if (section_complete == -1) {return -1;}
 		if (section_complete == 0) {
 			if (VERBOSE) {
 				printf("Box index %d incomplete\n", i);
 			}
-			free(section);
 			return 0;
 		}
 	}
-	free(section);
 	printf("Complete!\n");
 	return 1;
 }
