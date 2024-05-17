@@ -2,7 +2,7 @@
 #include <math.h>
 
 int main() {
-	double x = 6.0;
+	double x = 8.0;
 	double result;
 	int even;
 	
@@ -19,6 +19,20 @@ int main() {
 	
 	printf("------------------\n");
 	printf("%d\n", 1 << 2);
+	
+	printf("------------------\n");
+	printf("bit flip: %d %d\n", 13, (13 ^ 15));
+	
+	printf("------------------\n");
+	result = log(x) / log(2);
+	printf("%f %d\n", result, (int)result);
+	
+	printf("------------------\n");
+	for (int i = 0; i < 3; i++) {
+		printf("%d %d\n", 15 >> i, (15 >> i) & 1);
+		if (i == 1) {continue;}
+		printf("*");
+	}
 	
 	return 0;
 }
