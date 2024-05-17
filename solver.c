@@ -11,6 +11,7 @@
 
 int d();
 int bit_shift(int val);
+int bit_flip(int val);
 int find_cell(int x, int y);
 int cell_to_row(int cell);
 int* cells_in_row(int row);
@@ -21,7 +22,7 @@ int* get_column_values(int* cells, int index);
 int cell_to_box(int cell);
 int* cells_in_box(int box);
 int* get_box_values(int* cells, int index);
-int mark_cells_blocked_by_value(int* blocked_numbers, int* cells, int value);
+int mark_cells_blocked_by_value(int* cells, int* blocked_numbers, int index);
 int section_check(int* arr);
 int is_section_complete(int* arr);
 int is_puzzle_complete(int* cells);
@@ -39,10 +40,14 @@ int main() {
 	// values stored 1d, left to right then top to bottom
 	int *cells = (int *)malloc(SIZE * SIZE * sizeof(int));
 	int *blocked_numbers = (int *)malloc(SIZE * SIZE * sizeof(int));
-	int *section;;
+	int *section;
 	char input;
 	int index;
 	int value;
+	double d_value;
+	int complete;
+	int changed;
+	int latest;
 	
 	// get input
 	printf("Enter sudoku puzzle line by line (%d lines)\n", SIZE);
@@ -63,6 +68,7 @@ int main() {
 	printf("\n");
 	
 	// solve
+	printf("Working...\n");
 	// initial fill all possible
 	for (int i = 0; i < SIZE*SIZE; i++) {
 		*(blocked_numbers + i) = 0;
@@ -70,24 +76,59 @@ int main() {
 	// update to current values
 	for (int i = 0; i < SIZE*SIZE; i++) {
 		if (*(cells + i) != 0) {
-			value = bit_shift(*(cells + i));
-			section = (int *)cells_in_row(cell_to_row(i));
-			mark_cells_blocked_by_value(blocked_numbers, section, value);
-			free(section);
-			section = (int *)cells_in_column(cell_to_column(i));
-			mark_cells_blocked_by_value(blocked_numbers, section, value);
-			free(section);
-			section = (int *)cells_in_box(cell_to_box(i));
-			mark_cells_blocked_by_value(blocked_numbers, section, value);
-			free(section);
+			mark_cells_blocked_by_value(cells, blocked_numbers, i);
 		} else {
 			printf("cell %d is empty\n", i);
 		}
-		print_puzzle(blocked_numbers);
-		printf("======\n\n");
 	}
-	is_puzzle_complete(cells);
-	// TODO
+	/* actual solve: go through puzzle until empty cell is found, then
+	 * see if there is only one option, fill it if yes. If not, check
+	 * cell's sections to see if it contains the only spot for a given
+	 * value, fill it if yes. If whole puzzle is searched with no
+	 * changes, choose one possible value. */
+	while ((complete = is_puzzle_complete(cells)) == 0) {
+		changed = 0;
+		for (int i = 0; i < SIZE*SIZE; i++) {
+			value = *(cells + i);
+			if (value == 0) {
+				// only option for cell
+				latest = i;
+				d_value = bit_flip(*(blocked_numbers + i));
+				d_value = log(d_value) / log(2);
+				if (d_value == (value = (int)d_value)) {
+					value += 1;
+					changed = 1;
+					*(cells + i) = value;
+					mark_cells_blocked_by_value(cells, blocked_numbers, i);
+					if (VERBOSE) {
+						printf("Setting cell %d = %d (only option)\n", i, value);
+					}
+				}
+				// only cell in section
+				if (!changed) {}  // TODO
+			}
+		}
+		if (changed) {continue;}
+		// choose one; take farthest 0 cell into puzzle and smallest number
+		value = *(blocked_numbers + latest);
+		for (int v = 0; v < SIZE; v++) {
+			if (((value >> v) & 1) == 0) {
+				value = v + 1;
+				break;
+			}
+		}
+		*(cells + latest) = value;
+		mark_cells_blocked_by_value(cells, blocked_numbers, latest);
+		if (VERBOSE) {
+			printf("Setting cell %d = %d (random)\n", latest, value);
+		}
+	}
+	
+	if (complete == -1) {
+		printf("ERROR: Puzzle entered invalid state!\n");
+	}	
+	printf("\n");
+	print_puzzle(cells);
 	
 	// free
 	printf("\n....................\n");
@@ -106,6 +147,12 @@ int d() {
 int bit_shift(int val) {
 	/* Returns an int with 1 in the `val`'th bit. */
 	int result = 1 << (val - 1);
+	return result;
+}
+
+int bit_flip(int val) {
+	/* Returns the number with bits relevant to SIZE flipped. */
+	int result = val ^ (int)(pow(2, SIZE) - 1);
 	return result;
 }
 
@@ -194,12 +241,27 @@ int* get_box_values(int* cells, int index) {
 	return box;
 }
 
-int mark_cells_blocked_by_value(int* blocked_numbers, int* cells, int value) {
+int mark_cells_blocked_by_value(int* cells, int* blocked_numbers, int index) {
+	int value = bit_shift(*(cells + index));
+	int *arr;
+	arr = (int *)cells_in_row(cell_to_row(index));
 	for (int i = 0; i < SIZE; i++) {
-		int current = *(blocked_numbers + *(cells + i));
-		printf(",,,,,,,,,,,,,,,(%d) %d | %d = %d\n", *(cells + i), current, value, current|value);
-		*(blocked_numbers + *(cells + i)) |= value;
+		int current = *(blocked_numbers + *(arr + i));
+		*(blocked_numbers + *(arr + i)) |= value;
 	}
+	free(arr);
+	arr = (int *)cells_in_column(cell_to_column(index));
+	for (int i = 0; i < SIZE; i++) {
+		int current = *(blocked_numbers + *(arr + i));
+		*(blocked_numbers + *(arr + i)) |= value;
+	}
+	free(arr);
+	arr = (int *)cells_in_box(cell_to_box(index));
+	for (int i = 0; i < SIZE; i++) {
+		int current = *(blocked_numbers + *(arr + i));
+		*(blocked_numbers + *(arr + i)) |= value;
+	}
+	free(arr);
 	return 0;
 }
 
@@ -231,7 +293,6 @@ int is_section_complete(int* arr) {
 	int check = section_check(arr);
 	if (check == pow(2, SIZE) - 1) {return 1;}
 	if (check == -1) {return -1;}
-	print_section(arr);
 	return 0;
 }
 
