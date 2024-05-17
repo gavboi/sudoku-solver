@@ -1,5 +1,5 @@
 # Sudoku Solver in C
-(WIP) Solves standard, non-advanced Sudoku puzzles. 
+(WIP but sometimes functional) Solves standard, non-advanced Sudoku puzzles. 
 
 ## Notes 
 
