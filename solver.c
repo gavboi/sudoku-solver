@@ -4,7 +4,7 @@
 #include <math.h>
 
 // size must be square number
-#define SIZE 4
+#define SIZE 9
 // 1 to space squares in print, 0 to pack
 #define SPACED 1
 #define VERBOSE 1
@@ -88,10 +88,10 @@ int main() {
 	 * changes, choose one possible value. */
 	while ((complete = is_puzzle_complete(cells)) == 0) {
 		changed = 0;
+		// value is only option for cell
 		for (int i = 0; i < SIZE*SIZE; i++) {
 			value = *(cells + i);
 			if (value == 0) {
-				// only option for cell
 				latest = i;
 				d_value = bit_flip(*(blocked_numbers + i));
 				d_value = log(d_value) / log(2);
@@ -103,10 +103,93 @@ int main() {
 					if (VERBOSE) {
 						printf("Setting cell %d = %d (only option)\n", i, value);
 					}
+					continue;
 				}
-				// only cell in section
-				if (!changed) {}  // TODO
 			}
+		}
+		// only cell in section for value
+		for (int s = 0; s < SIZE; s++) {
+			section = cells_in_row(s);
+			for (int v = 0; v < SIZE; v++) {
+				index = -1;
+				for (int i = 0; i < SIZE; i++) {
+					value = *(blocked_numbers + *(section + i));
+					if (((value >> v) & 1) == 0) {
+						if (index == -1) {
+							index = i;
+						} else {
+							index = -2; 
+							break;
+						}
+					} 
+				}
+				if (index >= 0) {
+					value = v + 1;
+					changed = 1;
+					index = *(section + index);
+					*(cells + index) = value;
+					mark_cells_blocked_by_value(cells, blocked_numbers, index);
+					if (VERBOSE) {
+						printf("Setting cell %d = %d (section option)\n", index, value);
+					}
+					break;
+				}
+			}
+			free(section);
+			section = cells_in_column(s);
+			for (int v = 0; v < SIZE; v++) {
+				index = -1;
+				for (int i = 0; i < SIZE; i++) {
+					value = *(blocked_numbers + *(section + i));
+					if (((value >> v) & 1) == 0) {
+						if (index == -1) {
+							index = i;
+						} else {
+							index = -2; 
+							break;
+						}
+					} 
+				}
+				if (index >= 0) {
+					value = v + 1;
+					changed = 1;
+					index = *(section + index);
+					*(cells + index) = value;
+					mark_cells_blocked_by_value(cells, blocked_numbers, index);
+					if (VERBOSE) {
+						printf("Setting cell %d = %d (section option)\n", index, value);
+					}
+					break;
+				}
+			}
+			free(section);
+			section = cells_in_box(s);
+			for (int v = 0; v < SIZE; v++) {
+				index = -1;
+				for (int i = 0; i < SIZE; i++) { 
+					value = *(blocked_numbers + *(section + i));
+					if (((value >> v) & 1) == 0) {
+						if (index == -1) {
+							index = i;
+						} else {
+							index = -2; 
+							break;
+						}
+					} 
+				}
+				if (index >= 0) {
+					value = v + 1;
+					changed = 1;
+					index = *(section + index);
+					*(cells + index) = value;
+					mark_cells_blocked_by_value(cells, blocked_numbers, index);
+					if (VERBOSE) {
+						printf("Setting cell %d = %d (section option)\n", index, value);
+					}
+					break;
+				}
+			}
+			free(section);
 		}
 		if (changed) {continue;}
 		// choose one; take farthest 0 cell into puzzle and smallest number
@@ -114,8 +197,13 @@ int main() {
 		for (int v = 0; v < SIZE; v++) {
 			if (((value >> v) & 1) == 0) {
 				value = v + 1;
+				changed = 1;
 				break;
 			}
+		}
+		if (!changed) {
+			printf("Puzzle entered state with unfillable cells!\n");
+			return 1;
 		}
 		*(cells + latest) = value;
 		mark_cells_blocked_by_value(cells, blocked_numbers, latest);
@@ -242,6 +330,7 @@ int* get_box_values(int* cells, int index) {
 }
 
 int mark_cells_blocked_by_value(int* cells, int* blocked_numbers, int index) {
+	*(blocked_numbers + index) = pow(2, SIZE) - 1;
 	int value = bit_shift(*(cells + index));
 	int *arr;
 	arr = (int *)cells_in_row(cell_to_row(index));
