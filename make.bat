@@ -8,7 +8,7 @@ rem Compiler flags
 set CFLAGS=-Wall -Wextra -std=c11
 
 rem Source files
-set SRCS=solver.c params.c
+set SRCS=solver.c params.c helpers.c
 
 rem Output executable
 set TARGET=solver.exe
