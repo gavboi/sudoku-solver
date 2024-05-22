@@ -256,6 +256,7 @@ int main(int argc, char **argv) {
 
 int d() {
 	printf(".");
+	return 0;
 }
 
 int bit_shift(int val) {
@@ -356,24 +357,23 @@ int* get_box_values(int* cells, int index) {
 }
 
 int mark_cells_blocked_by_value(int* cells, int* blocked_numbers, int index) {
+	/* Updates `blocked_numbers` to reflect the value placed at `index`
+	 * in `cells`. Will update row, column, and box. */
 	*(blocked_numbers + index) = pow(2, getSize()) - 1;
 	int value = bit_shift(*(cells + index));
 	int *arr;
 	arr = (int *)cells_in_row(cell_to_row(index));
 	for (int i = 0; i < getSize(); i++) {
-		int current = *(blocked_numbers + *(arr + i));
 		*(blocked_numbers + *(arr + i)) |= value;
 	}
 	free(arr);
 	arr = (int *)cells_in_column(cell_to_column(index));
 	for (int i = 0; i < getSize(); i++) {
-		int current = *(blocked_numbers + *(arr + i));
 		*(blocked_numbers + *(arr + i)) |= value;
 	}
 	free(arr);
 	arr = (int *)cells_in_box(cell_to_box(index));
 	for (int i = 0; i < getSize(); i++) {
-		int current = *(blocked_numbers + *(arr + i));
 		*(blocked_numbers + *(arr + i)) |= value;
 	}
 	free(arr);
