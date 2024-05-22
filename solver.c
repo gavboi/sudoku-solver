@@ -1,13 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h> 
 #include <math.h>
+#include "params.h"
 
-// size must be square number
-#define SIZE 9
-// 1 to space squares in print, 0 to pack
-#define SPACED 1
-#define VERBOSE 1
 
 int d();
 int bit_shift(int val);
@@ -29,18 +26,8 @@ int is_puzzle_complete(int* cells);
 int print_section(int* cells);
 int print_puzzle(int* cells);
 
-int main() {
-	printf("=== SUDOKU SOLVER ===\n");
+int main(int argc, char **argv) {
 	// setup variables and functions
-	double square_test = sqrt(SIZE);
-	if (square_test != (int)square_test) {
-		printf("ERROR: SIZE = %d is not a square number!\n", SIZE);
-		return 1;
-	}
-	// values stored 1d, left to right then top to bottom
-	int *cells = (int *)malloc(SIZE * SIZE * sizeof(int));
-	int *blocked_numbers = (int *)malloc(SIZE * SIZE * sizeof(int));
-	int *section;
 	char input;
 	int index;
 	int value;
@@ -48,37 +35,73 @@ int main() {
 	int complete;
 	int changed;
 	int latest;
+	// parsing options
+	int opt;
+	while ((opt = getopt(argc, argv, "ghs:v")) != -1) {
+		switch (opt) {
+			case 's':
+				value = atoi(optarg);
+				if (setSize(value) != 0) {
+					printf("Invalid size! (size = %d)\n", value);
+					return 1;
+				}
+				break;
+			case 'g':
+				setSpaced(1);
+				break;
+			case 'v':
+				setVerbose(1);
+				break;
+			case 'h':
+			case '?':
+			default:
+				printf("Usage: %s [-s grid-size] [-g] [-v]\n", argv[0]);
+				printf("   s: set puzzle width/height\n");
+				printf("   g: format puzzle prints in grid\n");
+				printf("   v: enable debug prints\n");
+				return 1;
+		}
+	}
+	// values stored 1d, left to right then top to bottom
+	int *cells = (int *)malloc(getSize() * getSize() * sizeof(int));
+	int *blocked_numbers = (int *)malloc(getSize() * getSize() * sizeof(int));
+	int *section;
 	
 	// get input
-	printf("Enter sudoku puzzle line by line (%d lines)\n", SIZE);
+	printf("=== SUDOKU SOLVER ===\n");
+	printf("Enter sudoku puzzle line by line (%d lines)\n", getSize());
 	printf("and use 0 for unknown cells:\n\n");
-	printf("%.*s\n", SIZE, "vvvvvvvvvvvvvvvvvvvvvvvvvvvv");
-	for (int row_num = 0; row_num < SIZE; row_num++) {
+	printf("%.*s\n", getSize(), "vvvvvvvvvvvvvvvvvvvvvvvvvvvv");
+	for (int row_num = 0; row_num < getSize(); row_num++) {
 		index = 0;
-		while ((input = getchar()) && index < SIZE) {
+		while ((input = getchar()) && index < getSize()) {
 			if (input != '\n' && input != ' ') {
-				*(cells + (index++) + row_num*SIZE) = input - '0';
+				*(cells + (index++) + row_num*getSize()) = input - '0';
 			}
 		}
 	}
 	
 	// confirm input
-	printf("\nPuzzle received:\n\n");
-	print_puzzle(cells);
+	if (getVerbose()) {
+		printf("\nPuzzle received:\n\n");
+		print_puzzle(cells);
+	}
 	printf("\n");
 	
 	// solve
 	printf("Working...\n");
 	// initial fill all possible
-	for (int i = 0; i < SIZE*SIZE; i++) {
+	for (int i = 0; i < getSize()*getSize(); i++) {
 		*(blocked_numbers + i) = 0;
 	}
 	// update to current values
-	for (int i = 0; i < SIZE*SIZE; i++) {
+	for (int i = 0; i < getSize()*getSize(); i++) {
 		if (*(cells + i) != 0) {
 			mark_cells_blocked_by_value(cells, blocked_numbers, i);
 		} else {
-			printf("cell %d is empty\n", i);
+			if (getVerbose()) {
+				printf("cell %d is empty\n", i);
+			}
 		}
 	}
 	/* actual solve: go through puzzle until empty cell is found, then
@@ -89,7 +112,7 @@ int main() {
 	while ((complete = is_puzzle_complete(cells)) == 0) {
 		changed = 0;
 		// value is only option for cell
-		for (int i = 0; i < SIZE*SIZE; i++) {
+		for (int i = 0; i < getSize()*getSize(); i++) {
 			value = *(cells + i);
 			if (value == 0) {
 				latest = i;
@@ -100,7 +123,7 @@ int main() {
 					changed = 1;
 					*(cells + i) = value;
 					mark_cells_blocked_by_value(cells, blocked_numbers, i);
-					if (VERBOSE) {
+					if (getVerbose()) {
 						printf("Setting cell %d = %d (only option)\n", i, value);
 					}
 					continue;
@@ -108,11 +131,11 @@ int main() {
 			}
 		}
 		// only cell in section for value
-		for (int s = 0; s < SIZE; s++) {
+		for (int s = 0; s < getSize(); s++) {
 			section = cells_in_row(s);
-			for (int v = 0; v < SIZE; v++) {
+			for (int v = 0; v < getSize(); v++) {
 				index = -1;
-				for (int i = 0; i < SIZE; i++) {
+				for (int i = 0; i < getSize(); i++) {
 					value = *(blocked_numbers + *(section + i));
 					if (((value >> v) & 1) == 0) {
 						if (index == -1) {
@@ -129,7 +152,7 @@ int main() {
 					index = *(section + index);
 					*(cells + index) = value;
 					mark_cells_blocked_by_value(cells, blocked_numbers, index);
-					if (VERBOSE) {
+					if (getVerbose()) {
 						printf("Setting cell %d = %d (section option)\n", index, value);
 					}
 					break;
@@ -137,9 +160,9 @@ int main() {
 			}
 			free(section);
 			section = cells_in_column(s);
-			for (int v = 0; v < SIZE; v++) {
+			for (int v = 0; v < getSize(); v++) {
 				index = -1;
-				for (int i = 0; i < SIZE; i++) {
+				for (int i = 0; i < getSize(); i++) {
 					value = *(blocked_numbers + *(section + i));
 					if (((value >> v) & 1) == 0) {
 						if (index == -1) {
@@ -156,7 +179,7 @@ int main() {
 					index = *(section + index);
 					*(cells + index) = value;
 					mark_cells_blocked_by_value(cells, blocked_numbers, index);
-					if (VERBOSE) {
+					if (getVerbose()) {
 						printf("Setting cell %d = %d (section option)\n", index, value);
 					}
 					break;
@@ -164,9 +187,9 @@ int main() {
 			}
 			free(section);
 			section = cells_in_box(s);
-			for (int v = 0; v < SIZE; v++) {
+			for (int v = 0; v < getSize(); v++) {
 				index = -1;
-				for (int i = 0; i < SIZE; i++) { 
+				for (int i = 0; i < getSize(); i++) { 
 					value = *(blocked_numbers + *(section + i));
 					if (((value >> v) & 1) == 0) {
 						if (index == -1) {
@@ -183,7 +206,7 @@ int main() {
 					index = *(section + index);
 					*(cells + index) = value;
 					mark_cells_blocked_by_value(cells, blocked_numbers, index);
-					if (VERBOSE) {
+					if (getVerbose()) {
 						printf("Setting cell %d = %d (section option)\n", index, value);
 					}
 					break;
@@ -194,7 +217,7 @@ int main() {
 		if (changed) {continue;}
 		// choose one; take farthest 0 cell into puzzle and smallest number
 		value = *(blocked_numbers + latest);
-		for (int v = 0; v < SIZE; v++) {
+		for (int v = 0; v < getSize(); v++) {
 			if (((value >> v) & 1) == 0) {
 				value = v + 1;
 				changed = 1;
@@ -202,12 +225,14 @@ int main() {
 			}
 		}
 		if (!changed) {
-			printf("Puzzle entered state with unfillable cells!\n");
+			printf("Puzzle entered state with unfillable cells!\n\n");
+			print_puzzle(cells);
+			printf("\n");
 			return 1;
 		}
 		*(cells + latest) = value;
 		mark_cells_blocked_by_value(cells, blocked_numbers, latest);
-		if (VERBOSE) {
+		if (getVerbose()) {
 			printf("Setting cell %d = %d (random)\n", latest, value);
 		}
 	}
@@ -219,12 +244,13 @@ int main() {
 	print_puzzle(cells);
 	
 	// free
-	printf("\n....................\n");
-	printf("Freeing memory\n");
+	if (getVerbose()) {
+		printf("\nFreeing memory\n");
+	}
 	free(cells);
 	free(blocked_numbers);
 	
-	printf("Done\n\n");
+	printf("\nDone\n\n");
 	return 0;
 }
 
@@ -239,27 +265,27 @@ int bit_shift(int val) {
 }
 
 int bit_flip(int val) {
-	/* Returns the number with bits relevant to SIZE flipped. */
-	int result = val ^ (int)(pow(2, SIZE) - 1);
+	/* Returns the number with bits relevant to `size` flipped. */
+	int result = val ^ (int)(pow(2, getSize()) - 1);
 	return result;
 }
 
 int find_cell(int x, int y) {
-	int cell = x + y*SIZE;
+	int cell = x + y*getSize();
 	return cell;
 }
 
 int cell_to_row(int cell) {
 	/* Returns the row number containing the given cell. */
-	int row = cell / SIZE;
+	int row = cell / getSize();
 	return row;
 }
 
 int* cells_in_row(int row) {
 	/* Returns list of cell indexes in the given row. */
-	int *arr = (int *)malloc(SIZE * sizeof(int));
-	for (int i = 0; i < SIZE; i++) {
-		*(arr + i) = i + row*SIZE;
+	int *arr = (int *)malloc(getSize() * sizeof(int));
+	for (int i = 0; i < getSize(); i++) {
+		*(arr + i) = i + row*getSize();
 	}
 	return arr;
 }
@@ -267,24 +293,24 @@ int* cells_in_row(int row) {
 int* get_row_values(int* cells, int index) {
 	/* Returns subset of `cells` matching values contained in row
 	 * `index`. */
-	int *row = (int *)malloc(SIZE * sizeof(int));
-	for (int i = 0; i < SIZE; i++) {
-		*(row + i) = *(cells + i + index*SIZE);
+	int *row = (int *)malloc(getSize() * sizeof(int));
+	for (int i = 0; i < getSize(); i++) {
+		*(row + i) = *(cells + i + index*getSize());
 	}
 	return row;
 }
 
 int cell_to_column(int cell) {
 	/* Returns the column number containing the given cell. */
-	int col = cell % SIZE;
+	int col = cell % getSize();
 	return col;
 }
 
 int* cells_in_column(int col) {
 	/* Returns list of cell indexes in the given column. */
-	int *arr = (int *)malloc(SIZE * sizeof(int));
-	for (int i = 0; i < SIZE; i++) {
-		*(arr + i) = col + i*SIZE;
+	int *arr = (int *)malloc(getSize() * sizeof(int));
+	for (int i = 0; i < getSize(); i++) {
+		*(arr + i) = col + i*getSize();
 	}
 	return arr;
 }
@@ -292,29 +318,29 @@ int* cells_in_column(int col) {
 int* get_column_values(int* cells, int index) {
 	/* Returns subset of `cells` matching values contained in column
 	 * `index`. */
-	int *col = (int *)malloc(SIZE * sizeof(int));
-	for (int i = 0; i < SIZE; i++) {
-		*(col + i) = *(cells + index + i*SIZE);
+	int *col = (int *)malloc(getSize() * sizeof(int));
+	for (int i = 0; i < getSize(); i++) {
+		*(col + i) = *(cells + index + i*getSize());
 	}
 	return col;
 }
 
 int cell_to_box(int cell) {
 	/* Returns the box number containing the given cell. */
-	int rt = (int)sqrt(SIZE);
+	int rt = (int)sqrt(getSize());
 	int box = rt*(int)(cell_to_row(cell)/rt) + cell_to_column(cell)/rt;
 	return box;
 }
 
 int* cells_in_box(int box) {
 	/* Returns list of cell indexes in the given box. */
-	int *arr = (int *)malloc(SIZE * sizeof(int));
-	int root = (int)sqrt(SIZE);
+	int *arr = (int *)malloc(getSize() * sizeof(int));
+	int root = (int)sqrt(getSize());
 	int row = box / root;
 	int offset = box % root;
-	int base_offset = SIZE*root*row + root*offset;
-	for (int i = 0; i < SIZE; i++) {
-		*(arr + i) = base_offset + i + (SIZE-root)*(int)(i/root);
+	int base_offset = getSize()*root*row + root*offset;
+	for (int i = 0; i < getSize(); i++) {
+		*(arr + i) = base_offset + i + (getSize()-root)*(int)(i/root);
 	}
 	return arr;
 }
@@ -323,30 +349,30 @@ int* get_box_values(int* cells, int index) {
 	/* Returns subset of `cells` matching values contained in box
 	 * `index`. */
 	int *box = cells_in_box(index);
-	for (int i = 0; i < SIZE; i++) {
+	for (int i = 0; i < getSize(); i++) {
 		*(box + i) = *(cells + *(box + i));
 	}
 	return box;
 }
 
 int mark_cells_blocked_by_value(int* cells, int* blocked_numbers, int index) {
-	*(blocked_numbers + index) = pow(2, SIZE) - 1;
+	*(blocked_numbers + index) = pow(2, getSize()) - 1;
 	int value = bit_shift(*(cells + index));
 	int *arr;
 	arr = (int *)cells_in_row(cell_to_row(index));
-	for (int i = 0; i < SIZE; i++) {
+	for (int i = 0; i < getSize(); i++) {
 		int current = *(blocked_numbers + *(arr + i));
 		*(blocked_numbers + *(arr + i)) |= value;
 	}
 	free(arr);
 	arr = (int *)cells_in_column(cell_to_column(index));
-	for (int i = 0; i < SIZE; i++) {
+	for (int i = 0; i < getSize(); i++) {
 		int current = *(blocked_numbers + *(arr + i));
 		*(blocked_numbers + *(arr + i)) |= value;
 	}
 	free(arr);
 	arr = (int *)cells_in_box(cell_to_box(index));
-	for (int i = 0; i < SIZE; i++) {
+	for (int i = 0; i < getSize(); i++) {
 		int current = *(blocked_numbers + *(arr + i));
 		*(blocked_numbers + *(arr + i)) |= value;
 	}
@@ -356,15 +382,15 @@ int mark_cells_blocked_by_value(int* cells, int* blocked_numbers, int index) {
 
 int section_check(int* arr) {
 	/* Returns an int where the nth byte is 1 if n is present in `arr`.
-	 * `arr` must be length `SIZE`. Returns -1 if n occurs more than
+	 * `arr` must be length `size`. Returns -1 if n occurs more than
 	 * once. */
 	int total = 0;
 	int current;
-	for (int i = 0; i < SIZE; i++) {
+	for (int i = 0; i < getSize(); i++) {
 		if (*(arr + i) > 0) {
 			current = 1 << (*(arr + i) - 1);
 			if ((total & current) != 0) {
-				if (VERBOSE) {
+				if (getVerbose()) {
 					printf("2 instances of %d!\n", *(arr + i));
 				}
 				return -1;
@@ -376,11 +402,11 @@ int section_check(int* arr) {
 }	
 
 int is_section_complete(int* arr) {
-	/* Checks if a section `arr` of length `SIZE` contains all elements
-	 * from 1 to `SIZE`. Returns 1 if yes, 0 if no, -1 if already
+	/* Checks if a section `arr` of length `size` contains all elements
+	 * from 1 to `size`. Returns 1 if yes, 0 if no, -1 if already
 	 * invalid. */
 	int check = section_check(arr);
-	if (check == pow(2, SIZE) - 1) {return 1;}
+	if (check == pow(2, getSize()) - 1) {return 1;}
 	if (check == -1) {return -1;}
 	return 0;
 }
@@ -390,13 +416,13 @@ int is_puzzle_complete(int* cells) {
 	 * Returns 1 if yes, 0 if no, -1 if invalid. */
 	int *section;
 	int section_complete;
-	for (int i = 0; i < SIZE; i++) {
+	for (int i = 0; i < getSize(); i++) {
 		section = get_row_values(cells, i);
 		section_complete = is_section_complete(section);
 		free(section);
 		if (section_complete == -1) {return -1;}
 		if (section_complete == 0) {
-			if (VERBOSE) {
+			if (getVerbose()) {
 				printf("Row index %d incomplete\n", i);
 			}
 			return 0;
@@ -406,7 +432,7 @@ int is_puzzle_complete(int* cells) {
 		free(section);
 		if (section_complete == -1) {return -1;}
 		if (section_complete == 0) {
-			if (VERBOSE) {
+			if (getVerbose()) {
 				printf("Column index %d incomplete\n", i);
 			}
 			return 0;
@@ -416,7 +442,7 @@ int is_puzzle_complete(int* cells) {
 		free(section);
 		if (section_complete == -1) {return -1;}
 		if (section_complete == 0) {
-			if (VERBOSE) {
+			if (getVerbose()) {
 				printf("Box index %d incomplete\n", i);
 			}
 			return 0;
@@ -428,10 +454,10 @@ int is_puzzle_complete(int* cells) {
 
 int print_section(int* arr) {
 	/* Prints contents of `arr` in a row, with spacing if required.
-	 * `arr` must be length `SIZE`. */
-	int root = (int)sqrt(SIZE);
-	for (int i = 0; i < SIZE; i++) {
-		if (SPACED && i != 0 && i % root == 0) {
+	 * `arr` must be length `size`. */
+	int root = (int)sqrt(getSize());
+	for (int i = 0; i < getSize(); i++) {
+		if (getSpaced() && i != 0 && i % root == 0) {
 			printf(" | ");
 		}
 		printf("%d", *(arr + i));
@@ -443,15 +469,12 @@ int print_section(int* arr) {
 int print_puzzle(int* cells) {
 	/* Prints contents of `cells` as a full puzzle with spacing if
 	 * required. */
-	int root = (int)sqrt(SIZE);
-	for (int y = 0; y < SIZE; y++) {
-		if (SPACED && y != 0 && y % root == 0) {
-			printf("%.*s\n", SIZE + 3*(root-1), "-------------------------");
+	int root = (int)sqrt(getSize());
+	for (int y = 0; y < getSize(); y++) {
+		if (getSpaced() && y != 0 && y % root == 0) {
+			printf("%.*s\n", getSize() + 3*(root-1), "-------------------------");
 		}
-		print_section(cells + y*SIZE);
+		print_section(cells + y*getSize());
 	}
 	return 0;
 }
-
-// THURSDAY -> store what can be put in
-// FRIDAY -> generate puzzles
